@@ -91,20 +91,41 @@ async def process_complaint(update: Update, context) -> int:
 
     if choice == "Call Instead":
         await update.message.reply_text(f"☎️ Call Cafeteria: {CAFETERIA_PHONE}")
+        await update.message.reply_text(
+            "📝 We've received your concern and will respond within 24 hours",
+            reply_markup=ReplyKeyboardMarkup(main_keyboard, resize_keyboard=True)
+        )
+        return MAIN_MENU
     elif choice == "Message via Mail":
         await update.message.reply_text(f"✉️ Email us at: {SCHOOL_EMAIL}")
-    else:  # Write Complaint
+        await update.message.reply_text(
+            "📝 We've received your concern and will respond within 24 hours",
+            reply_markup=ReplyKeyboardMarkup(main_keyboard, resize_keyboard=True)
+        )
+        return MAIN_MENU
+    elif choice == "Write Complaint":
         await update.message.reply_text("Please describe your issue:")
-        return COMPLAINT  # Wait for complaint text
-
-    # In future: Add to Google Sheets here
-    print(f"COMPLAINT: {choice}")
-
-    await update.message.reply_text(
-        "📝 We've received your concern and will respond within 24 hours",
-        reply_markup=ReplyKeyboardMarkup(main_keyboard, resize_keyboard=True)
-    )
-    return MAIN_MENU
+        context.user_data['complaint_stage'] = 'writing'
+        return COMPLAINT
+    else:
+        # This handles the actual complaint text
+        if context.user_data.get('complaint_stage') == 'writing':
+            complaint_text = update.message.text
+            print(f"COMPLAINT TEXT: {complaint_text}")
+            
+            await update.message.reply_text(
+                "📝 We've received your concern and will respond within 24 hours",
+                reply_markup=ReplyKeyboardMarkup(main_keyboard, resize_keyboard=True)
+            )
+            context.user_data.pop('complaint_stage', None)
+            return MAIN_MENU
+        else:
+            # Unknown choice, show complaint options again
+            await update.message.reply_text(
+                "Please choose one of the options:",
+                reply_markup=ReplyKeyboardMarkup(complaint_keyboard, one_time_keyboard=True)
+            )
+            return COMPLAINT
 
 async def help_command(update: Update, context) -> None:
     """Contact information"""
