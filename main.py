@@ -9,7 +9,8 @@ from telegram.ext import (
 )
 
 # Configuration (YOUR INFO)
-TOKEN = "7861460900:AAHt_IK7VOmXzX7tfJ3BmIatJozBEaju3uQ"
+import os
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "7861460900:AAHt_IK7VOmXzX7tfJ3BmIatJozBEaju3uQ")
 MENU_PDF_URL = "https://docs.google.com/document/d/1sHbRmAsCfWgXU7DsbWR_7oAeX7P-3e8-2eJN3zpcqMQ/export?format=pdf"
 CAFETERIA_PHONE = "(306) 523-3200"
 SCHOOL_EMAIL = "balfourcollegiate@rbe.sk.ca"
@@ -136,30 +137,44 @@ async def help_command(update: Update, context) -> None:
         "• Hours: 8 AM - 3 PM Mon-Fri"
     )
 
-def main() -> None:
-    # Build bot
-    application = ApplicationBuilder().token(TOKEN).build()
-
-    # Conversation flow
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
-        states={
-            ROLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_role)],
-            MAIN_MENU: [
-                CommandHandler('menu', menu),
-                CommandHandler('order', order),
-                CommandHandler('complaint', complaint),
-                CommandHandler('help', help_command)
-            ],
-            ORDER: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_order)],
-            COMPLAINT: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_complaint)]
-        },
-        fallbacks=[]
+async def handle_unknown_message(update: Update, context) -> int:
+    """Handle unexpected messages"""
+    await update.message.reply_text(
+        "I'm not sure what you mean. Please use the menu buttons or type /start to begin.",
+        reply_markup=ReplyKeyboardMarkup(main_keyboard, resize_keyboard=True)
     )
+    return MAIN_MENU
 
-    application.add_handler(conv_handler)
-    application.run_polling()
+def main() -> None:
+    try:
+        # Build bot
+        application = ApplicationBuilder().token(TOKEN).build()
+
+        # Conversation flow
+        conv_handler = ConversationHandler(
+            entry_points=[CommandHandler('start', start)],
+            states={
+                ROLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_role)],
+                MAIN_MENU: [
+                    CommandHandler('menu', menu),
+                    CommandHandler('order', order),
+                    CommandHandler('complaint', complaint),
+                    CommandHandler('help', help_command)
+                ],
+                ORDER: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_order)],
+                COMPLAINT: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_complaint)]
+            },
+            fallbacks=[
+                CommandHandler('start', start),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_message)
+            ]
+        )
+
+        application.add_handler(conv_handler)
+        print("Bot is running...")
+        application.run_polling()
+    except Exception as e:
+        print(f"Error starting bot: {e}")
 
 if __name__ == '__main__':
-    print("Bot is running...")
     main()
